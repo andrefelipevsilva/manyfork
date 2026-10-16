@@ -1,0 +1,5 @@
+# HTTPS automático (Let's Encrypt) pro domínio do .env.prod.
+{$DOMINIO} {
+	encode zstd gzip
+	reverse_proxy web:3010
+}

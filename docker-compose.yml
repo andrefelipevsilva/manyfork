@@ -1,0 +1,19 @@
+# Postgres de DESENVOLVIMENTO (porta 5440 pra não brigar com outro Postgres da máquina).
+# Produção: docker-compose.prod.yml.
+name: manyfork-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: manyfork
+      POSTGRES_USER: manyfork
+      POSTGRES_PASSWORD: manyfork
+    ports:
+      - "5440:5432"
+    volumes:
+      - pg_dev:/var/lib/postgresql/data
+      - ./scripts/criar-banco-teste.sql:/docker-entrypoint-initdb.d/criar-banco-teste.sql:ro
+
+volumes:
+  pg_dev:

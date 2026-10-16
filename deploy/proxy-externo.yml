@@ -1,0 +1,18 @@
+# Pra quem já tem um proxy reverso no servidor (Caddy, Nginx, Traefik) ocupando as
+# portas 80 e 443. Desliga o Caddy do manyfork e põe o painel na rede Docker do seu
+# proxy, que passa a alcançar o container "manyfork-web" na porta 3010.
+#
+#   docker compose -f docker-compose.prod.yml -f deploy/proxy-externo.yml --env-file deploy/.env.prod up -d --build
+#
+# Defina PROXY_NETWORK no deploy/.env.prod (veja o nome com `docker network ls`).
+
+services:
+  caddy:
+    profiles: ["desligado"]
+  web:
+    networks: [interno, proxy]
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:?defina PROXY_NETWORK no deploy/.env.prod}

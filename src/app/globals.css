@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/* Tema: claro por padrão, escuro pelo sistema ou pelo botão (data-theme). */
+:root {
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-2: #eef0ea;
+  --border: #dfe2d8;
+  --text: #16180f;
+  --muted: #646a58;
+  --accent: #4d7c0f;
+  --accent-strong: #3f6212;
+  --accent-soft: #ecfccb;
+  --accent-text: #ffffff;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --warn: #a16207;
+  --warn-soft: #fef3c7;
+  --ok: #15803d;
+  --ok-soft: #dcfce7;
+  --canvas-dot: #cfd3c6;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0d0a;
+    --surface: #15170f;
+    --surface-2: #1d2016;
+    --border: #2c3022;
+    --text: #eef1e6;
+    --muted: #9aa18a;
+    --accent: #a3e635;
+    --accent-strong: #bef264;
+    --accent-soft: #1f2a0c;
+    --accent-text: #10140a;
+    --danger: #f87171;
+    --danger-soft: #3a1414;
+    --warn: #fbbf24;
+    --warn-soft: #33270a;
+    --ok: #4ade80;
+    --ok-soft: #0f2c19;
+    --canvas-dot: #2a2e21;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0c0d0a;
+  --surface: #15170f;
+  --surface-2: #1d2016;
+  --border: #2c3022;
+  --text: #eef1e6;
+  --muted: #9aa18a;
+  --accent: #a3e635;
+  --accent-strong: #bef264;
+  --accent-soft: #1f2a0c;
+  --accent-text: #10140a;
+  --danger: #f87171;
+  --danger-soft: #3a1414;
+  --warn: #fbbf24;
+  --warn-soft: #33270a;
+  --ok: #4ade80;
+  --ok-soft: #0f2c19;
+  --canvas-dot: #2a2e21;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Componentes básicos */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-transparent bg-accent text-accent-fg hover:bg-accent-strong;
+  }
+  .btn-danger {
+    @apply border-transparent bg-danger-soft text-danger hover:opacity-80;
+  }
+  .btn-sm {
+    @apply px-2 py-1 text-xs;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-muted;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
+
+/* React Flow no tema do painel */
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-color: var(--canvas-dot);
+  --xy-edge-stroke: var(--muted);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-connectionline-stroke: var(--accent);
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--surface-2);
+  --xy-controls-button-color: var(--text);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--surface);
+  --xy-node-boxshadow-selected: 0 0 0 2px var(--accent);
+  --xy-handle-background-color: var(--accent);
+  --xy-handle-border-color: var(--surface);
+  --xy-attribution-background-color: transparent;
+}
+.react-flow__handle {
+  width: 11px;
+  height: 11px;
+  border-width: 2px;
+}

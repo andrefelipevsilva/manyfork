@@ -1,0 +1,47 @@
+{
+  "name": "manyfork",
+  "version": "0.1.0",
+  "description": "Automação de Instagram de código aberto (comentário → DM, palavra-chave no direct, story) sobre a API oficial da Meta.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "next dev -p 3010",
+    "dev:worker": "tsx watch src/worker/index.ts",
+    "build": "prisma generate && next build",
+    "start": "next start -p 3010",
+    "worker": "tsx src/worker/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:up": "docker compose up -d postgres",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "senha": "tsx scripts/gerar-senha.ts",
+    "segredos": "tsx scripts/gerar-segredos.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "@xyflow/react": "12.12.0",
+    "next": "15.5.28",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "tsx": "4.23.15",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "prisma": "6.19.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true
+  }
+}

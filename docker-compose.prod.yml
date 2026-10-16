@@ -1,0 +1,97 @@
+# Produção do manyfork: Postgres + painel + worker + Caddy (HTTPS automático).
+#
+#   docker compose -f docker-compose.prod.yml --env-file deploy/.env.prod up -d --build
+#
+# Já tem um proxy reverso (Caddy, Nginx, Traefik) no servidor? Some com o Caddy daqui
+# e ligue o painel na rede do seu proxy com deploy/proxy-externo.yml.
+# Passo a passo completo: deploy/README.md
+
+name: manyfork
+
+x-app-env: &app-env
+  NODE_ENV: production
+  TZ: ${TZ:-America/Sao_Paulo}
+  APP_URL: https://${DOMINIO:?defina DOMINIO no deploy/.env.prod}
+  DATABASE_URL: postgresql://manyfork:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no deploy/.env.prod}@postgres:5432/manyfork
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: manyfork
+      POSTGRES_USER: manyfork
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manyfork -d manyfork"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [interno]
+
+  migrate:
+    build: .
+    image: manyfork:latest
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [interno]
+
+  web:
+    image: manyfork:latest
+    container_name: manyfork-web
+    restart: unless-stopped
+    env_file: deploy/.env.prod
+    environment:
+      <<: *app-env
+      COOKIE_SECURE: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3010/api/saude').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [interno]
+
+  worker:
+    image: manyfork:latest
+    container_name: manyfork-worker
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    env_file: deploy/.env.prod
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [interno]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMINIO: ${DOMINIO}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    networks: [interno]
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  interno:

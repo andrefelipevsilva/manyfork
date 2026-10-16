@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env.prod
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+
+# Anotações pessoais (não vão pro GitHub)
+*.local.md
+.claude/settings.local.json

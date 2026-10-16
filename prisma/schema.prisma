@@ -1,0 +1,342 @@
+// manyfork — automação de Instagram no estilo ManyChat, sobre a API oficial da Meta.
+// Migrations: SEMPRE geradas pelo Prisma (`npm run db:migrate`), nunca SQL à mão.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Conta do Instagram conectada pelo "Login com Instagram" (Instagram API with
+// Instagram Login). O igUserId é o id que chega em entry.id nos webhooks.
+model Account {
+  id                  String    @id @default(cuid())
+  igUserId            String    @unique @map("ig_user_id")
+  username            String
+  name                String?
+  profilePictureUrl   String?   @map("profile_picture_url")
+  // Token de longa duração (60 dias), cifrado com AES-256-GCM (ENCRYPTION_KEY).
+  accessTokenEnc      String    @map("access_token_enc")
+  tokenExpiresAt      DateTime  @map("token_expires_at")
+  tokenRefreshedAt    DateTime  @default(now()) @map("token_refreshed_at")
+  webhookSubscribedAt DateTime? @map("webhook_subscribed_at")
+  // Conta de simulação (painel "Testar"): nada sai pra Meta.
+  simulated           Boolean   @default(false)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  contacts    Contact[]
+  automations Automation[]
+  tags        Tag[]
+
+  @@map("accounts")
+}
+
+model Contact {
+  id               String    @id @default(cuid())
+  accountId        String    @map("account_id")
+  // Instagram-scoped ID (IGSID) do seguidor.
+  igsid            String
+  username         String?
+  name             String?
+  profilePic       String?   @map("profile_pic")
+  followerCount    Int?      @map("follower_count")
+  followsUs        Boolean?  @map("follows_us")
+  profileFetchedAt DateTime? @map("profile_fetched_at")
+  email            String?
+  phone            String?
+  // Campos personalizados que os fluxos gravam (pergunta → campo).
+  fields           Json      @default("{}")
+  source           String?
+  // Última mensagem DA PESSOA: abre a janela de 24h da Meta.
+  lastInboundAt    DateTime? @map("last_inbound_at")
+  lastOutboundAt   DateTime? @map("last_outbound_at")
+  // Live chat: com a automação pausada, só resposta manual.
+  automationPaused Boolean   @default(false) @map("automation_paused")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  account  Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tags     ContactTag[]
+  runs     FlowRun[]
+  messages Message[]
+  events   Event[]
+
+  @@unique([accountId, igsid])
+  @@index([accountId, lastInboundAt])
+  @@map("contacts")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  accountId String   @map("account_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  account  Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contacts ContactTag[]
+
+  @@unique([accountId, name])
+  @@map("tags")
+}
+
+model ContactTag {
+  contactId String   @map("contact_id")
+  tagId     String   @map("tag_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@map("contact_tags")
+}
+
+enum AutomationStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+}
+
+enum TriggerType {
+  COMMENT
+  DM_KEYWORD
+  STORY_REPLY
+  STORY_MENTION
+  DEFAULT_REPLY
+}
+
+model Automation {
+  id            String           @id @default(cuid())
+  accountId     String           @map("account_id")
+  name          String
+  status        AutomationStatus @default(DRAFT)
+  triggerType   TriggerType      @map("trigger_type")
+  // Ver src/lib/engine/types.ts (TriggerConfig).
+  triggerConfig Json             @map("trigger_config")
+  // Grafo do editor (nós + ligações). Ver src/lib/engine/types.ts (Flow).
+  flow          Json
+  // Menor número ganha quando duas automações batem no mesmo evento.
+  priority      Int              @default(100)
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  account Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  runs    FlowRun[]
+  events  Event[]
+  links   TrackedLink[]
+
+  @@index([accountId, triggerType, status])
+  @@map("automations")
+}
+
+enum RunStatus {
+  RUNNING
+  WAITING_BUTTON
+  WAITING_INPUT
+  WAITING_DELAY
+  WAITING_INBOUND
+  DONE
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+// Uma execução de um fluxo para um contato.
+model FlowRun {
+  id               String    @id @default(cuid())
+  automationId     String    @map("automation_id")
+  contactId        String    @map("contact_id")
+  status           RunStatus @default(RUNNING)
+  currentNodeId    String?   @map("current_node_id")
+  // Comentário que disparou o fluxo: vale UMA resposta privada, até 7 dias.
+  commentId        String?   @map("comment_id")
+  commentCreatedAt DateTime? @map("comment_created_at")
+  privateReplyUsed Boolean   @default(false) @map("private_reply_used")
+  // Estado do nó atual (tentativas, etc.) e variáveis do fluxo.
+  state            Json      @default("{}")
+  waitingUntil     DateTime? @map("waiting_until")
+  error            String?
+  stepCount        Int       @default(0) @map("step_count")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  finishedAt       DateTime? @map("finished_at")
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  contact    Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages   Message[]
+
+  @@index([contactId, status])
+  @@index([automationId, createdAt])
+  @@index([status, waitingUntil])
+  @@map("flow_runs")
+}
+
+enum Direction {
+  IN
+  OUT
+}
+
+// Histórico da conversa (caixa de entrada) — entrada e saída.
+model Message {
+  id           String    @id @default(cuid())
+  accountId    String    @map("account_id")
+  contactId    String    @map("contact_id")
+  direction    Direction
+  // id da mensagem na Meta (mid). Único pra deduplicar reentrega do webhook.
+  mid          String?   @unique
+  kind         String
+  text         String?
+  payload      Json?
+  runId        String?   @map("run_id")
+  automationId String?   @map("automation_id")
+  // Mandada pelo app do Instagram (não pelo manyfork).
+  external     Boolean   @default(false)
+  // Conversa do simulador ("Testar"): não conta no limite da Meta nem nas métricas.
+  simulated    Boolean   @default(false)
+  error        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  contact Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  run     FlowRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([contactId, createdAt])
+  @@index([accountId, createdAt])
+  @@map("messages")
+}
+
+// Comentários recebidos (deduplica reentrega e guarda a resposta pública).
+model Comment {
+  id                 String    @id
+  accountId          String    @map("account_id")
+  mediaId            String    @map("media_id")
+  mediaProductType   String?   @map("media_product_type")
+  fromIgsid          String    @map("from_igsid")
+  fromUsername       String?   @map("from_username")
+  text               String
+  parentId           String?   @map("parent_id")
+  automationId       String?   @map("automation_id")
+  publicReplyId      String?   @map("public_reply_id")
+  publicReplyText    String?   @map("public_reply_text")
+  publicReplyError   String?   @map("public_reply_error")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@index([accountId, createdAt])
+  @@index([mediaId])
+  @@map("comments")
+}
+
+enum EventType {
+  TRIGGERED
+  MESSAGE_SENT
+  MESSAGE_FAILED
+  BUTTON_CLICK
+  LINK_CLICK
+  INPUT_CAPTURED
+  FOLLOW_GATE_PASSED
+  FOLLOW_GATE_BLOCKED
+  PUBLIC_REPLY
+  BREVO_SYNCED
+  RUN_FINISHED
+}
+
+// Métricas por automação.
+model Event {
+  id           String    @id @default(cuid())
+  accountId    String    @map("account_id")
+  automationId String?   @map("automation_id")
+  contactId    String?   @map("contact_id")
+  runId        String?   @map("run_id")
+  nodeId       String?   @map("node_id")
+  type         EventType
+  meta         Json?
+  simulated    Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  automation Automation? @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  contact    Contact?    @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, type, createdAt])
+  @@index([automationId, type])
+  @@map("events")
+}
+
+// Link de botão com rastreio de clique: /r/<id>/<contactId> → url.
+model TrackedLink {
+  id           String   @id
+  automationId String   @map("automation_id")
+  nodeId       String   @map("node_id")
+  buttonId     String   @map("button_id")
+  url          String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, nodeId, buttonId, url])
+  @@map("tracked_links")
+}
+
+// Corpo cru de cada webhook da Meta: o endpoint grava e responde 200 na hora;
+// o worker processa depois. Serve também de trilha de auditoria.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  payload     Json
+  receivedAt  DateTime  @default(now()) @map("received_at")
+  processedAt DateTime? @map("processed_at")
+  error       String?
+
+  @@index([receivedAt])
+  @@map("webhook_events")
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+// Fila de trabalho do worker (Postgres puro, sem Redis).
+model Job {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  status      JobStatus @default(PENDING)
+  runAt       DateTime  @default(now()) @map("run_at")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5) @map("max_attempts")
+  // Jobs com a mesma chave (ex.: o mesmo contato) rodam um de cada vez.
+  lockKey     String?   @map("lock_key")
+  lockedAt    DateTime? @map("locked_at")
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  @@index([status, runAt])
+  @@index([lockKey, status])
+  @@map("jobs")
+}
+
+// Configurações editáveis no painel (chave → valor JSON).
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// Tentativas de login no painel (bloqueio por IP após falhas seguidas).
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([ip, createdAt])
+  @@map("login_attempts")
+}
