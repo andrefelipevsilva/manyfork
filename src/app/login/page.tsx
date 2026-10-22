@@ -1,3 +1,4 @@
+import { Marca } from "@/components/marca";
 import { FormularioLogin } from "./formulario";
 
 export const metadata = { title: "Entrar · manyfork" };
@@ -8,20 +9,11 @@ export default async function PaginaLogin({ searchParams }: { searchParams: Prom
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <Logo />
-          <p className="mt-2 text-sm text-muted">Automação do seu Instagram</p>
+          <Marca id="login" className="mx-auto h-11 w-auto text-fg" />
+          <p className="mt-3 text-sm text-muted">Automação do seu Instagram</p>
         </div>
         <FormularioLogin de={de ?? "/"} />
       </div>
     </main>
-  );
-}
-
-function Logo() {
-  return (
-    <div className="inline-flex items-center gap-2 font-mono text-2xl font-semibold tracking-tight">
-      <span className="inline-block h-3 w-3 rounded-sm bg-accent" />
-      manyfork
-    </div>
   );
 }

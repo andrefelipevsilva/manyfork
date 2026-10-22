@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sair } from "@/app/login/actions";
 import { IconeBalao, IconeEngrenagem, IconeLua, IconeMenu, IconePainel, IconePessoas, IconeRaio, IconeSair, IconeSol, IconeTubo } from "./icones";
+import { Marca } from "./marca";
 
 const ITENS = [
   { href: "/", rotulo: "Painel", Icone: IconePainel },
@@ -42,10 +43,7 @@ export function MenuLateral({ conta }: { conta: { username: string; simulada: bo
   return (
     <>
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-3 md:hidden">
-        <span className="flex items-center gap-2 font-mono font-semibold">
-          <span className="h-2.5 w-2.5 rounded-sm bg-accent" />
-          manyfork
-        </span>
+        <Marca id="topo" className="h-7 w-auto text-fg" />
         <button className="btn btn-sm" onClick={() => setAberto((x) => !x)} aria-label="Abrir menu" aria-expanded={aberto}>
           <IconeMenu />
         </button>
@@ -53,9 +51,8 @@ export function MenuLateral({ conta }: { conta: { username: string; simulada: bo
       <aside
         className={`${aberto ? "flex" : "hidden"} fixed inset-x-0 top-[57px] bottom-0 z-20 flex-col border-r border-line bg-surface md:sticky md:top-0 md:flex md:h-dvh md:w-56 md:shrink-0`}
       >
-        <div className="hidden items-center gap-2 px-5 py-5 font-mono text-lg font-semibold md:flex">
-          <span className="h-3 w-3 rounded-sm bg-accent" />
-          manyfork
+        <div className="hidden px-5 py-5 md:flex">
+          <Marca id="menu" className="h-8 w-auto text-fg" />
         </div>
         <nav className="flex-1 space-y-0.5 px-3 py-2">
           {ITENS.map(({ href, rotulo, Icone }) => (

@@ -19,6 +19,7 @@
   --ok: #15803d;
   --ok-soft: #dcfce7;
   --canvas-dot: #cfd3c6;
+  --brand: #16180f;
   color-scheme: light;
 }
 
@@ -41,6 +42,7 @@
     --ok: #4ade80;
     --ok-soft: #0f2c19;
     --canvas-dot: #2a2e21;
+    --brand: #c8f04a;
     color-scheme: dark;
   }
 }
@@ -63,6 +65,7 @@
   --ok: #4ade80;
   --ok-soft: #0f2c19;
   --canvas-dot: #2a2e21;
+  --brand: #c8f04a;
   color-scheme: dark;
 }
 
